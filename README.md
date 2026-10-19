@@ -8,29 +8,13 @@
 
 v1.2에는 **인물별 `|` 분리**, **주인공 런 외형 fallback**, **외형 태그 조립 정규화**, **인물별 좌우 위치·외형 특징 혼합 방지 지침**이 포함됩니다. 새 CG 생성 시 등장인물 수에 따라 LEFT/CENTER/RIGHT 등의 구역을 배정하며, 인물 고유의 머리색·동물 귀·안경 등을 서로 혼합하지 말라고 명시합니다. 위치는 CG마다 등장인물 수와 순서에 맞춰 배정되며, 결과를 반드시 보장하는 기능은 아닙니다. 새 CG를 생성할 때 `CG prompt assembled` 진단 로그를 기록합니다. 인물 이름이나 외형 원문은 로그에 저장하지 않습니다.
 
-> 참고: 기존 테스트에서 `|` 분리는 실제 이미지 요청까지 적용됐지만, 최종 이미지 기록에서 외형이 문자 단위로 분리되는 현상이 확인됐습니다. 최신 v1.2는 태그 조립과 외형 구분 지침을 보완했지만, **실제 이미지 엔진의 후처리까지 정상인지는 새 CG 생성 후 확인이 필요합니다.**
-
-이미 **이전 빌드의 v1.2**를 설치했다면, 다음 명령어로 **이름은 그대로 v1.2를 최신 수정본으로 교체**할 수 있습니다. 생성 중인 스토리·CG 작업을 완료한 뒤 실행해 주세요.
-
-```bash
-cd /root
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o gacha-cg-v1.2.cjs
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-versionctl.py -o gacha-cg-versionctl.py
-python3 /root/gacha-cg-versionctl.py status
-python3 /root/gacha-cg-versionctl.py switch v1.2
-cd /root/Marinara-Engine
-docker compose up -d --force-recreate --no-deps marinara
-```
-
-기존 테스트 빌드는 `active runtime: v1.2-previous`로 표시될 수 있습니다. 갱신하면 `active runtime: v1.2`가 됩니다.
-
 **새 CG를 생성한 뒤** 점검:
 
 ```bash
 docker logs --since 30m marinara-engine-marinara-1 2>&1 | grep -E 'v1.2|CG prompt assembled' | tail -20
 ```
 
-`CG prompt assembled: characters=N pipes=N fragmented=false`는 **패치 안에서 조립한 프롬프트의 진단 결과**입니다. 최종 이미지 기록에서도 외형 태그가 정상인지 별도로 확인해야 합니다. 이미 생성된 CG는 자동으로 바뀌지 않습니다.
+`CG prompt assembled: characters=N pipes=N fragmented=false`는 **패치 안에서 조립한 프롬프트의 진단 결과**입니다. 실제 그림의 외형 일관성은 이미지 모델에 따라 달라질 수 있습니다. 이미 생성된 CG는 자동으로 바뀌지 않습니다.
 
 ## 1. 버전 비교 — 어떤 걸 설치하면 될까요?
 
