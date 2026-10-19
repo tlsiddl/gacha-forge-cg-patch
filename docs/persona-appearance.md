@@ -40,7 +40,7 @@ docker exec marinara-engine-marinara-1 python3 -c 'import json,pathlib; p=pathli
 예시 출력:
 
 ```text
-주인공: 채서래 | Run ID: run-예시123
+주인공: 김띠니 | Run ID: run-예시123
 주인공: 다른캐릭터 | Run ID: run-예시456
 ```
 
