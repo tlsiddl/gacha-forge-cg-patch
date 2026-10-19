@@ -1,4 +1,4 @@
-# Gacha Forge CG 조건 패치 — v1 / v1.1
+# Gacha Forge CG 조건 패치 — v1 / v1.1 / v1.2
 
 가챠 포지 **1.8.12**에서 CG 선정 조건을 캐릭터 중심으로 개선하는 비공식 런타임 패치입니다. **원하는 버전을 선택해 설치하신 뒤, 필요하면 v1 ↔ v1.1로 변경할 수 있습니다.**
 
@@ -15,9 +15,43 @@
 | 없는 행동·감정·접촉 임의 생성 금지 | 유지 | 유지 |
 | 기존 CG 빈도 상한·사용자 이미지 지침 | 변경 없음 | 변경 없음 |
 
-**v1.1을 추천**하지만, 기존 v1도 계속 선택하실 수 있습니다. v1.1은 페르소나가 **실제 장면에 참여하거나 화면에 존재할 때** CG에서 누락되지 않도록 모델에 더 명확히 지시합니다. 페르소나를 모든 그림에 강제로 등장시키지는 않습니다.
+**v1.2를 추천**하지만, 기존 v1도 계속 선택하실 수 있습니다. v1.1은 페르소나가 **실제 장면에 참여하거나 화면에 존재할 때** CG에서 누락되지 않도록 모델에 더 명확히 지시합니다. 페르소나를 모든 그림에 강제로 등장시키지는 않습니다.
 
 이 패치는 CG를 *선정하는 스토리 생성 프롬프트*를 변경합니다. 이미지 생성기나 캐릭터 시트 연결 코드를 수정하는 것은 아닙니다. 따라서 CG 포함을 보장하지 않으며, 이미 생성된 스토리·CG에는 소급 적용되지 않습니다.
+
+
+## v1.2 — 다인물 CG 외형 분리 (추천)
+
+v1.2는 v1.1의 CG 장면 선정 및 페르소나 동반 우대 기능을 유지하면서 **스토리 CG에 한해서** 이미지 프롬프트를 아래 형식으로 구성합니다.
+
+```text
+배경, 분위기, 공통 구도 | 캐릭터 1 외형, 복장, 행동 | 캐릭터 2 외형, 복장, 행동
+```
+
+기존 이미지 참조를 추가하거나 캐릭터 초상화를 참조 이미지로 전송하지 않습니다. 각 인물의 이미지용 외형 태그와 장면 동작을 독립 구획으로 묶어 특징 교차를 완화하려는 시도이며, 이미지 모델의 결과를 보장하지는 않습니다. **캐릭터가 누락되거나 실제 등장하지 않은 인물을 강제 추가하지 않습니다.** 주인공 유닛의 외형이 비어 있다면 기존 런의 `protagonist.appearance`를 이미지 생성 시에만 대신 사용합니다. 저장된 주인공 유닛이나 페르소나 자체는 변경하지 않습니다. 일반 배너·초상화 생성에는 이 구분 형식을 적용하지 않습니다.
+
+기존 설치자는 **스토리·CG 생성 작업이 모두 끝난 후** 아래처럼 업데이트할 수 있습니다.
+
+```bash
+cd /root
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o gacha-cg-v1.2.cjs
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-versionctl.py -o gacha-cg-versionctl.py
+python3 /root/gacha-cg-versionctl.py switch v1.2
+cd /root/Marinara-Engine
+docker compose up -d --force-recreate --no-deps marinara
+```
+
+**주의:** 버전 관리 도구는 활성 런타임 파일을 원자적으로 교체하므로 기존 컨테이너의 파일 바인드 마운트가 이전 버전을 가리킬 수 있습니다. 버전 변경 후에는 단순 `restart` 대신 위의 `--force-recreate` 명령으로 컨테이너를 재생성해야 합니다. 작업 중 재생성하면 진행 중인 AI 요청이 중단될 수 있습니다. Compose의 데이터 볼륨은 삭제하지 않습니다.
+
+확인:
+```bash
+python3 /root/gacha-cg-versionctl.py status
+docker logs --since 10m marinara-engine-marinara-1 2>&1 | grep 'gacha-cg' | tail -20
+```
+
+기대 적용 로그: `CG character-focused selection and pipe-separated CG prompt v1.2 applied in memory`.
+
+v1.2는 향후 생성되는 CG에만 영향을 주며 기존 그림을 다시 그리지 않습니다. 이전 버전으로 돌아가려면 `switch v1.1` 후 동일한 컨테이너 재생성 과정을 사용하세요.
 
 ## 1. 공통 준비 — GitHub에서 직접 다운로드
 
@@ -60,7 +94,7 @@ python3 /root/gacha-cg-versionctl.py install v1.1
 
 ```bash
 cd /root/Marinara-Engine
-docker compose up -d --no-deps marinara
+docker compose up -d --force-recreate --no-deps marinara
 ```
 
 ## 3. 기존 v1 사용자 — v1.1로 업그레이드
@@ -74,7 +108,7 @@ python3 /root/gacha-cg-versionctl.py status
 python3 /root/gacha-cg-versionctl.py switch v1.1
 
 cd /root/Marinara-Engine
-docker compose up -d --no-deps marinara
+docker compose up -d --force-recreate --no-deps marinara
 ```
 
 설치 스크립트는 이미 적용된 Compose 마운트 및 `NODE_OPTIONS`를 유지하고 **CG 런타임 파일만 교체**합니다. 한국어 패치 설정과 CG 패치의 기존 복구용 백업은 변경하지 않습니다.
@@ -89,7 +123,7 @@ v1.1을 사용해 보신 뒤 기존 CG 선정 방식을 선호하신다면 아�
 python3 /root/gacha-cg-versionctl.py switch v1
 
 cd /root/Marinara-Engine
-docker compose up -d --no-deps marinara
+docker compose up -d --force-recreate --no-deps marinara
 ```
 
 이는 CG 패치를 제거하는 것이 아니라 **버전만 변경**하는 작업입니다.
@@ -117,12 +151,14 @@ docker logs --since 10m marinara-engine-marinara-1 2>&1 | grep 'gacha-cg' | tail
 python3 /root/gacha-cg-patchctl.py restore
 
 cd /root/Marinara-Engine
-docker compose up -d --no-deps marinara
+docker compose up -d --force-recreate --no-deps marinara
 ```
 
 복원은 CG 패치 설치 직전 Compose 상태를 되살립니다. v1을 설치한 후 v1.1로 전환했더라도 복원 대상은 **최초 CG 패치 설치 직전 설정**입니다. 설치 이후 Compose 설정을 수동 변경하셨다면 자동 복구가 안전하게 중단될 수 있습니다.
 
 ## 지원 파일
+
+- `versions/v1.2/gacha-cg-runtime.cjs`: 다인물 CG 프롬프트 `|` 분리 및 주인공 외형 fallback
 
 - `versions/v1/gacha-cg-runtime.cjs`: v1 런타임 (보존)
 - `versions/v1.1/gacha-cg-runtime.cjs`: 페르소나 동반 CG 선정 기능을 강화한 v1.1
