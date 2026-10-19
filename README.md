@@ -189,7 +189,93 @@ docker compose up -d --force-recreate --no-deps marinara
 3. **이미 진행 중인 기존 런**이라면 런에 저장된 `protagonist.appearance`도 확인해야 합니다. 런 외형이 비어 있다면 **아래의 유닛 동기화 명령부터 실행해서는 안 됩니다.** 해당 명령은 원본 페르소나 설명을 읽거나 외형을 자동 추출하지 못합니다. 런 외형을 먼저 안전하게 반영·검증해야 합니다.
 4. 기존 런 외형이 정상이고 **주인공 유닛의 외형만 비어 있을 때** 아래 백업·동기화 명령을 사용합니다.
 
-**중요:** 아래 코드는 ‘설명’이나 `Image Appearance Override`에서 외형을 자동 추출하는 코드가 아닙니다. **런에 이미 저장된 외형을 빈 주인공 유닛에 복사**하는 코드입니다. 실제 검증 사례에서도 ① 원본 페르소나의 별도 외형란 저장 → ② 기존 런 외형 동기화 → ③ 주인공 유닛 외형 동기화 순서로 진행했습니다. 기존 런 외형을 반영하는 절차는 서버 버전과 저장 구조를 확인해 별도로 수행한 것이므로, 이 README의 단일 코드로 모든 단계를 완료한다고 안내하지 않습니다.
+**중요:** 아래 코드는 ‘설명’이나 `Image Appearance Override`에서 외형을 자동 추출하는 코드가 아닙니다. **런에 이미 저장된 외형을 빈 주인공 유닛에 복사**하는 코드입니다. 실제 검증 사례에서도 ① 원본 페르소나의 별도 외형란 저장 → ② 기존 런 외형 동기화 → ③ 주인공 유닛 외형 동기화 순서로 진행했습니다. 아래에는 기존 런에 원본 페르소나 외형을 복사하는 **2단계**와, 그 외형을 빈 주인공 유닛에 복사하는 **3단계**를 구분해 안내합니다.
+
+### 기존 런에 원본 페르소나 외형 반영하기 (2단계)
+
+페르소나 편집 화면의 별도 **외형란을 저장한 뒤** 실행하는 단계입니다. `Image Appearance Override`에 작성한 문장을 자동 추출하지 않습니다. 원본 페르소나의 `appearance`가 비어 있으면 작업을 중단합니다.
+
+**아래 명령은 이미 만들어진 런의 `protagonist.appearance`가 빈 경우에만 복사합니다.** 기존 런에 값이 있다면 덮어쓰지 않습니다. 다른 페르소나·다른 런을 건드리지 않도록 런에 연결된 `personaId`와 이름을 대조하고, 수정 전에 인덱스 파일을 백업합니다. 이 코드는 Gacha Forge 1.8.12의 실제 저장 구조를 기준으로 작성한 안내용 스크립트입니다. **실제 사용자 사례에서는 같은 저장 필드를 동기화하고 400자가 들어간 것을 확인했지만, 아래 범용화한 명령을 여러 환경에서 검증한 것은 아닙니다.** 모든 스토리·CG 생성 작업이 끝나고 서버 백업을 준비한 뒤 사용하세요.
+
+```bash
+RUN_ID='여기에-런-ID'
+docker exec -i -e RUN_ID="$RUN_ID" marinara-engine-marinara-1 python3 - <<'PY'
+import json, os, shutil, tempfile
+from pathlib import Path
+from datetime import datetime
+
+root = Path('/app/data/storage/tables/capability_documents')
+run_id = os.environ.get('RUN_ID', '')
+if not run_id or run_id == '여기에-런-ID':
+    raise SystemExit('중단: RUN_ID를 실제 값으로 변경해 주세요.')
+index_path = root / 'index.json'
+original = index_path.read_bytes()
+rows = json.loads(original)
+if not isinstance(rows, list) or len(rows) != 1:
+    raise SystemExit('중단: 알 수 없는 런 저장 구조입니다.')
+raw = rows[0].get('data')
+if not isinstance(raw, str):
+    raise SystemExit('중단: 알 수 없는 인덱스 데이터 형식입니다.')
+index_data = json.loads(raw)
+runs = index_data.get('runs', [])
+matched = [x for x in runs if x.get('runId') == run_id]
+if len(matched) != 1:
+    raise SystemExit('중단: 런을 유일하게 찾을 수 없습니다.')
+run = matched[0]
+protagonist = run.get('protagonist') or {}
+persona_id = protagonist.get('personaId')
+name = protagonist.get('name')
+if not persona_id or not name:
+    raise SystemExit('중단: 연결된 페르소나 정보가 없습니다.')
+if (protagonist.get('appearance') or '').strip():
+    raise SystemExit('중단: 런의 외형란이 이미 채워져 있습니다. 덮어쓰지 않습니다.')
+
+persona_root = Path('/app/data/storage/tables/personas')
+found = []
+for path in persona_root.glob('*.json'):
+    try:
+        item = json.loads(path.read_text())
+        if isinstance(item, list) and len(item) == 1 and item[0].get('id') == persona_id:
+            found.append(item[0])
+    except (ValueError, OSError, TypeError, KeyError):
+        continue
+if len(found) != 1:
+    raise SystemExit('중단: 원본 페르소나를 유일하게 찾지 못했습니다.')
+persona = found[0]
+if persona.get('name') != name:
+    raise SystemExit('중단: 원본 페르소나 이름과 런의 주인공 이름이 다릅니다.')
+appearance = persona.get('appearance') or ''
+if not isinstance(appearance, str) or not appearance.strip():
+    raise SystemExit('중단: 원본 페르소나의 별도 외형란이 비어 있습니다.')
+
+backup = index_path.with_name('index.json.appearance-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+shutil.copy2(index_path, backup)
+protagonist['appearance'] = appearance
+rows[0]['data'] = json.dumps(index_data, ensure_ascii=False)
+if index_path.read_bytes() != original:
+    raise SystemExit('중단: 작업 도중 런 인덱스 파일이 변경되었습니다.')
+fd, temporary = tempfile.mkstemp(prefix='.gacha-run-appearance-', dir=str(root))
+try:
+    with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+        json.dump(rows, handle, ensure_ascii=False)
+    shutil.copymode(index_path, temporary)
+    os.replace(temporary, index_path)
+finally:
+    if os.path.exists(temporary): os.unlink(temporary)
+check = json.loads(index_path.read_text())[0]['data']
+check = json.loads(check) if isinstance(check, str) else check
+verified = next(x for x in check['runs'] if x.get('runId') == run_id)
+print('주인공:', name)
+print('원본 외형:', len(appearance), '자')
+print('런 외형:', len(verified['protagonist'].get('appearance', '')), '자')
+print('외형 일치:', verified['protagonist'].get('appearance') == appearance)
+print('백업:', backup.name)
+PY
+```
+
+이 단계에서 **`외형 일치: True`**가 확인되면 다음 **주인공 유닛 외형 동기화(3단계)**를 진행할 수 있습니다. 원본 페르소나 외형도 비어 있다면 명령을 반복하지 말고 먼저 편집 화면에서 외형란을 저장하세요. 서버가 기존 문서를 캐시하는 경우 실행 중인 프로세스에 즉시 반영되지 않을 수 있으므로 새 CG 결과는 별도로 확인해야 합니다.
+
+### 기존 런의 주인공 유닛에 외형 반영하기 (3단계)
 
 가챠 포지의 **런에 저장된 주인공 외형**과 **주인공 캐릭터 유닛 외형**은 별개일 수 있습니다. 기존 런의 `protagonist.appearance`에는 텍스트가 있어도 유닛 `appearance`가 빈 문자열인 경우가 확인되었습니다.
 
