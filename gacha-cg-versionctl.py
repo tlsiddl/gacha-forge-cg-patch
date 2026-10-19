@@ -12,7 +12,7 @@ MOUNT='./gacha-cg-runtime.cjs:/app/gacha-cg-runtime.cjs:ro'
 REQUIRE='--require=/app/gacha-cg-runtime.cjs'
 VERSIONS={'v1':HERE/'gacha-cg-v1.cjs','v1.1':HERE/'gacha-cg-v1.1.cjs','v1.2':HERE/'gacha-cg-v1.2.cjs'}
 
-LEGACY_V12_GIT_BLOB='c63ab628100d1757befb463dc0f62b32fc34f4c7'
+LEGACY_V12_GIT_BLOBS={'c63ab628100d1757befb463dc0f62b32fc34f4c7','10f0a2c59136baa1e3282902cac8982b799f3f6d'}
 def git_blob_sha(content):
     return hashlib.sha1(b'blob '+str(len(content)).encode()+b'\0'+content).hexdigest()
 
@@ -23,7 +23,7 @@ def current_version():
     b=ACTIVE.read_bytes()
     for k,p in VERSIONS.items():
         if p.exists() and p.read_bytes()==b:return k
-    if git_blob_sha(b)==LEGACY_V12_GIT_BLOB:return 'v1.2-previous'
+    if git_blob_sha(b) in LEGACY_V12_GIT_BLOBS:return 'v1.2-previous'
     return 'unrecognized'
 def installed():
     if not OVERRIDE.exists():return False
