@@ -72,7 +72,7 @@ def main():
         print('CG settings restored. Restart Marinara to apply.')
         return
     if not SRC.is_file():stop('Place gacha-cg-runtime.cjs next to this script')
-    if 'CG character-focused selection policy' not in SRC.read_text():stop('Unexpected CG runtime file')
+    if '[gacha-cg]' not in SRC.read_text() or 'const BEFORE=' not in SRC.read_text():stop('Unexpected CG runtime file')
     if installed:stop('CG patch already configured')
     if BACKUP.exists() or HASH.exists():stop('Existing backup state; inspect before continuing')
     updated=add(s)
