@@ -12,7 +12,7 @@
 | 인상적인 상호작용·다인 장면 CG 우대 | ✅ | ✅ | ✅ |
 | **주인공이 장면에 실제 등장할 때 CG 동반 우대** | 기본 | ✅ 강화 | ✅ 강화 |
 | 포옹·손잡기 등 실제 동작을 충실히 표현하도록 강조 | 기본 | ✅ 강화 | ✅ 강화 |
-| **다인물 CG 프롬프트를 `|`로 구분** | ❌ | ❌ | ✅ |
+| **다인물 CG 프롬프트를 인물별로 분리** | ❌ | ❌ | ✅ |
 | 주인공 유닛 외형이 비면 **런 외형을 CG에서 대체 사용** | ❌ | ❌ | ✅ |
 | 이미지 참조 파일 요구 | ❌ | ❌ | ❌ |
 
@@ -145,7 +145,7 @@ docker compose up -d --force-recreate --no-deps marinara
 | **Run ID가 무엇이고 어떻게 찾는지** | [Run ID 설명과 조회 명령어](docs/persona-appearance.md#run-id가-뭔가요-어디서-확인하나요) |
 | **기존 런 외형 동기화 (2단계)** | [원본 페르소나 → 게임 런](docs/persona-appearance.md#2단계--원본-페르소나-외형을-기존-게임-런에-복사하기) |
 | **주인공 유닛 외형 동기화 (3단계)** | [게임 런 → 주인공 유닛](docs/persona-appearance.md#3단계--기존-주인공-유닛에도-외형-반영하기) |
-| **`|` 분리 기능만 사용** | [단독판 설치 안내](standalone/README.md) |
+| **인물별 프롬프트 분리 기능만 사용** | [단독판 설치 안내](standalone/README.md) |
 
 각 버전 소스: [v1](versions/v1/gacha-cg-runtime.cjs) · [v1.1](versions/v1.1/gacha-cg-runtime.cjs) · [v1.2](versions/v1.2/gacha-cg-runtime.cjs)
 
