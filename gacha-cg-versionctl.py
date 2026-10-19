@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage v1/v1.1 CG policy without changing other Marinara patches."""
+"""Manage v1/v1.1/v1.2 CG policy without changing other Marinara patches."""
 from pathlib import Path
 import argparse, hashlib, os, subprocess, tempfile
 
@@ -10,7 +10,7 @@ ACTIVE=ROOT/'gacha-cg-runtime.cjs'
 LEGACY_CTL=HERE/'gacha-cg-patchctl.py'
 MOUNT='./gacha-cg-runtime.cjs:/app/gacha-cg-runtime.cjs:ro'
 REQUIRE='--require=/app/gacha-cg-runtime.cjs'
-VERSIONS={'v1':HERE/'gacha-cg-v1.cjs','v1.1':HERE/'gacha-cg-v1.1.cjs'}
+VERSIONS={'v1':HERE/'gacha-cg-v1.cjs','v1.1':HERE/'gacha-cg-v1.1.cjs','v1.2':HERE/'gacha-cg-v1.2.cjs'}
 
 def fail(s):raise SystemExit('STOP: '+s)
 def hash_bytes(b):return hashlib.sha256(b).hexdigest()
@@ -43,7 +43,7 @@ def write_atomic(path,data):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('action',choices=['status','install','switch'])
-    p.add_argument('version',nargs='?',choices=['v1','v1.1'])
+    p.add_argument('version',nargs='?',choices=['v1','v1.1','v1.2'])
     a=p.parse_args()
     if not ROOT.is_dir():fail('Missing Marinara directory')
     on=installed()
@@ -51,11 +51,11 @@ def main():
     if a.action=='status':
         print('CG configured:',on,'active runtime:',cur)
         return
-    if not a.version:fail('Choose v1 or v1.1')
+    if not a.version:fail('Choose v1, v1.1, or v1.2')
     new=checked_source(a.version)
     if a.action=='install':
         if on:fail('CG already installed; use switch')
-        if cur not in ('none','v1','v1.1'):fail('Existing runtime unknown; refusing overwrite')
+        if cur not in ('none','v1','v1.1','v1.2'):fail('Existing runtime unknown; refusing overwrite')
         if not LEGACY_CTL.exists():fail('Missing gacha-cg-patchctl.py')
         old=ACTIVE.read_bytes() if ACTIVE.exists() else None
         try:
@@ -71,13 +71,13 @@ def main():
             raise
     else:
         if not on:fail('CG not installed; use install')
-        if cur=='unrecognized':fail('Current runtime differs from official v1/v1.1; refusing overwrite')
+        if cur=='unrecognized':fail('Current runtime differs from official v1/v1.1/v1.2/v1.2; refusing overwrite')
         if cur=='none':fail('Active CG runtime file not found')
         if cur==a.version:
             print('Already using '+cur)
             return
         write_atomic(ACTIVE,new)
-        print('Switched '+cur+' -> '+a.version+'. Restart Marinara to apply.')
-    print('Run: cd /root/Marinara-Engine && docker compose up -d --no-deps marinara')
+        print('Switched '+cur+' -> '+a.version+'. Recreate Marinara container to apply the new bind-mounted file.')
+    print('Run: cd /root/Marinara-Engine && docker compose up -d --force-recreate --no-deps marinara')
 
 if __name__=='__main__':main()
