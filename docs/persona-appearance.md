@@ -155,6 +155,25 @@ PY
 
 **언제 필요한가요?** 2단계에서 기존 런의 외형은 채워졌지만 **주인공 유닛의 `appearance`가 비어 있는 경우**입니다.
 
+### 먼저 주인공 유닛 외형이 비어 있는지 확인하기 (읽기 전용)
+
+**2단계와 별개로 확인해야 합니다.** 기존 런에는 외형이 저장되어 있어도 주인공 유닛의 `appearance`는 비어 있을 수 있습니다. 다음 명령은 **런과 유닛을 둘 다 확인**하며 데이터를 수정하지 않습니다.
+
+앞에서 확인한 본인의 Run ID로 `RUN_ID`를 바꾼 뒤 아래 **두 줄을 함께** 실행해 주세요.
+
+```bash
+RUN_ID='여기에-런-ID'
+docker exec -e RUN_ID="$RUN_ID" marinara-engine-marinara-1 python3 -c 'import json,os,pathlib; root=pathlib.Path("/app/data/storage/tables/capability_documents"); rid=os.environ["RUN_ID"]; doc=json.loads((root/"index.json").read_text())[0]["data"]; doc=json.loads(doc) if isinstance(doc,str) else doc; runs=[r for r in doc.get("runs",[]) if r.get("runId")==rid]; assert len(runs)==1, "Run ID를 확인해 주세요"; protagonist=runs[0].get("protagonist") or {}; unit_id=rid+":unit:protagonist"; path=root/(unit_id.replace(":","%3A")+".json"); assert path.exists(), "주인공 유닛 파일이 없습니다"; rows=json.loads(path.read_text()); assert isinstance(rows,list) and len(rows)==1 and rows[0].get("id")==unit_id, "주인공 유닛 ID가 일치하지 않습니다"; u=rows[0]["data"]; u=json.loads(u) if isinstance(u,str) else u; assert u.get("isProtagonist") is True and u.get("name")==protagonist.get("name"), "주인공 신원이 일치하지 않습니다"; a=protagonist.get("appearance") or ""; b=u.get("appearance") or ""; print("주인공:",u.get("name")); print("런 외형:",len(a),"자"); print("유닛 외형:",len(b),"자"); print("외형 일치:",bool(a.strip()) and a==b); print("3단계 필요:",bool(a.strip()) and not b.strip())'
+```
+
+| 확인 결과 | 다음 작업 |
+| --- | --- |
+| **런 외형 있음 / 유닛 외형 0자 / 3단계 필요: True** | 아래 **3단계 동기화**를 실행하세요. |
+| **런 외형 있음 / 유닛 외형 있음 / 외형 일치: True** | 정상입니다. **3단계를 건너뛰세요.** |
+| **런 외형 0자** | 먼저 **2단계**를 완료하세요. |
+| **런·유닛 모두 외형이 있지만 일치하지 않음** | 자동으로 덮어쓰지 말고 외형 내용과 연결된 페르소나를 확인하세요. |
+| **유닛 파일 또는 주인공 신원 오류** | 수정하지 말고 게임 기록과 저장 구조를 먼저 확인하세요. |
+
 **무엇을 바꾸나요?** 런의 외형을 주인공 유닛의 외형에 복사합니다. 기존 레벨·장비·전투 능력을 초기화하지 않습니다. 대상 파일을 백업하며 이미 외형이 있으면 덮어쓰지 않습니다.
 
 ```bash
