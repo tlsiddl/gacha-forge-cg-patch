@@ -31,13 +31,10 @@ CG 선정 정책 없이 **스토리 CG 프롬프트 구획 분리만** 사용하
 
 ## 2. 설치 — 공통 준비 (처음 한 번)
 
-SSH로 마리나라 서버에 접속한 후 아래 명령어를 **통째로** 실행해 주세요. 세 버전 파일과 설치·전환 도구를 내려받습니다. 기존 한국어·가속 패치와 별도로 관리됩니다.
+SSH로 마리나라 서버에 접속해 **설치·버전 전환 도구만** 먼저 내려받아 주세요. **버전 파일은 다음 3번에서 원하는 것 하나만 받습니다.** 기존 한국어·가속 패치와는 별도로 관리됩니다.
 
 ```bash
 cd /root
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1/gacha-cg-runtime.cjs -o gacha-cg-v1.cjs
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.1/gacha-cg-runtime.cjs -o gacha-cg-v1.1.cjs
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o gacha-cg-v1.2.cjs
 curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-patchctl.py -o gacha-cg-patchctl.py
 curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-versionctl.py -o gacha-cg-versionctl.py
 ```
@@ -60,6 +57,7 @@ python3 /root/gacha-cg-versionctl.py status
 첫 등장·첫 대면·의미 있는 상호작용의 CG 선정을 개선합니다.
 
 ```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.cjs
 python3 /root/gacha-cg-versionctl.py install v1
 ```
 
@@ -70,6 +68,7 @@ v1 기능에 더해, **실제 장면에 존재하는 주인공**이 다른 인�
 **먼저 [페르소나 외형이 채워졌는지 확인하세요](docs/persona-appearance.md).**
 
 ```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.1/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.1.cjs
 python3 /root/gacha-cg-versionctl.py install v1.1
 ```
 
@@ -86,6 +85,7 @@ v1.1 기능에 더해 **스토리 CG 프롬프트를 인물별로 분리**합니
 **먼저 [페르소나 외형이 채워졌는지 확인하세요](docs/persona-appearance.md).**
 
 ```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.2.cjs
 python3 /root/gacha-cg-versionctl.py install v1.2
 ```
 
@@ -100,13 +100,28 @@ docker compose up -d --force-recreate --no-deps marinara
 
 ## 4. 이미 설치한 경우 — 다른 버전으로 전환
 
-**공통 준비의 파일을 최신 상태로 내려받은 뒤** 아래에서 원하는 버전 하나를 실행하세요. 기존 패치를 제거할 필요는 없습니다.
+**2번의 관리 도구를 최신 상태로 내려받은 뒤**, 아래에서 변경하려는 버전 **하나만 다운로드하고 전환**하세요. 기존 패치를 제거할 필요는 없습니다.
 
-| 변경할 버전 | 실행 명령 |
-| --- | --- |
-| v1 | `python3 /root/gacha-cg-versionctl.py switch v1` |
-| v1.1 | `python3 /root/gacha-cg-versionctl.py switch v1.1` |
-| v1.2 | `python3 /root/gacha-cg-versionctl.py switch v1.2` |
+### v1로 변경
+
+```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.cjs
+python3 /root/gacha-cg-versionctl.py switch v1
+```
+
+### v1.1로 변경
+
+```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.1/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.1.cjs
+python3 /root/gacha-cg-versionctl.py switch v1.1
+```
+
+### v1.2로 변경
+
+```bash
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o /root/gacha-cg-v1.2.cjs
+python3 /root/gacha-cg-versionctl.py switch v1.2
+```
 
 이어서 **3번의 공통 적용 명령어**를 실행해 컨테이너를 재생성하세요. 버전 전환 시 다른 한국어·가속 패치를 제거하지 않습니다.
 
