@@ -36,6 +36,7 @@ def write_atomic(path,data):
     fd,tmp=tempfile.mkstemp(prefix='.gacha-cg-version-',dir=str(path.parent))
     try:
         with os.fdopen(fd,'wb') as f:f.write(data)
+        os.chmod(tmp,0o644)
         os.replace(tmp,path)
     finally:
         if os.path.exists(tmp):os.unlink(tmp)
