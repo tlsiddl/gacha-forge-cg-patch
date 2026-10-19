@@ -1,43 +1,36 @@
 # Gacha Forge CG 패치
 
-가챠 포지 **1.8.12**의 스토리 CG 선정 및 인물 표현을 보완하는 **비공식 런타임 패치**입니다. v1 / v1.1 / v1.2 / v1.2.1 중 **한 버전만** 설치할 수 있고, 기존 버전으로 돌아갈 수 있습니다.
+가챠 포지 **1.8.12**의 스토리 CG 선정 및 인물 표현을 보완하는 **비공식 런타임 패치**입니다. v1 / v1.1 / v1.2 중 **한 버전만** 설치할 수 있고, 기존 버전으로 돌아갈 수 있습니다.
 
 > 지원 기준: Marinara Engine 2.5.0 · Gacha Forge 1.8.12 · Node.js 22 이상 · Docker Compose · `/root/Marinara-Engine`. 설치 전에 스토리·CG 생성 작업을 모두 마쳐 주세요.
 
-## v1.2.1 핫픽스 — 인물 외형 태그 점검
+## v1.2 — 다인물 CG 프롬프트 개선
 
-v1.2에서 **인물별 `|` 구분은 실제 CG 생성에 적용**됐지만, 저장된 이미지 프롬프트에서 외형이 `1, w, o, m, a, n`처럼 문자 단위로 나뉘는 현상이 발견됐습니다.
+v1.2에는 **인물별 `|` 분리**, **주인공 런 외형 fallback**, **외형 태그 조립 정규화**가 포함됩니다. 새 CG를 생성할 때 `CG prompt assembled` 진단 로그를 기록합니다. 인물 이름이나 외형 원문은 로그에 저장하지 않습니다.
 
-v1.2.1은 인물 외형을 **쉼표로 구분된 태그 단위로 정규화**하고, 생성 직전 프롬프트가 정상 조립됐는지 로그로 확인하는 진단 기능을 추가했습니다. **CG 선정과 주인공 외형 fallback은 v1.2와 동일하게 유지**합니다.
+> 참고: 기존 테스트에서 `|` 분리는 실제 이미지 요청까지 적용됐지만, 최종 이미지 기록에서 외형이 문자 단위로 분리되는 현상이 확인됐습니다. 최신 v1.2는 태그 조립을 보완했지만, **실제 이미지 엔진의 후처리까지 정상인지는 새 CG 생성 후 확인이 필요합니다.**
 
-**기존 v1.2 사용자 업데이트** (스토리·CG 생성 작업이 끝난 뒤 실행):
+이미 **이전 빌드의 v1.2**를 설치했다면, 다음 명령어로 **이름은 그대로 v1.2를 최신 수정본으로 교체**할 수 있습니다. 생성 중인 스토리·CG 작업을 완료한 뒤 실행해 주세요.
 
 ```bash
 cd /root
-curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2.1/gacha-cg-runtime.cjs -o gacha-cg-v1.2.1.cjs
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2/gacha-cg-runtime.cjs -o gacha-cg-v1.2.cjs
 curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-versionctl.py -o gacha-cg-versionctl.py
-python3 /root/gacha-cg-versionctl.py switch v1.2.1
-cd /root/Marinara-Engine
-docker compose up -d --force-recreate --no-deps marinara
-```
-
-**로그 검사** (다음에 새로운 CG가 생성된 후):
-
-```bash
-docker logs --since 30m marinara-engine-marinara-1 2>&1 | grep -E 'v1.2.1|CG prompt assembled' | tail -20
-```
-
-`CG prompt assembled: characters=N pipes=N fragmented=false`는 **가챠 포지 패치 내부에서 조립된 텍스트가 정상**이라는 뜻입니다. 여기서 `fragmented=false`인데 전역 이미지 기록의 프롬프트가 깨져 있다면, **이미지 엔진의 이후 처리 단계**를 조사해야 합니다. 즉 이 핫픽스만으로 최종 생성 결과까지 고쳐졌다고 단정하지 않습니다. 해당 로그는 인물 이름이나 전체 외형 텍스트를 기록하지 않습니다.
-
-**v1.2로 되돌리기:**
-
-```bash
+python3 /root/gacha-cg-versionctl.py status
 python3 /root/gacha-cg-versionctl.py switch v1.2
 cd /root/Marinara-Engine
 docker compose up -d --force-recreate --no-deps marinara
 ```
 
-기존 생성 CG는 자동 재생성되지 않습니다. 최신 코드는 [v1.2.1 소스 파일](versions/v1.2.1/gacha-cg-runtime.cjs)에서 확인할 수 있습니다.
+기존 테스트 빌드는 `active runtime: v1.2-previous`로 표시될 수 있습니다. 갱신하면 `active runtime: v1.2`가 됩니다.
+
+**새 CG를 생성한 뒤** 점검:
+
+```bash
+docker logs --since 30m marinara-engine-marinara-1 2>&1 | grep -E 'v1.2|CG prompt assembled' | tail -20
+```
+
+`CG prompt assembled: characters=N pipes=N fragmented=false`는 **패치 안에서 조립한 프롬프트의 진단 결과**입니다. 최종 이미지 기록에서도 외형 태그가 정상인지 별도로 확인해야 합니다. 이미 생성된 CG는 자동으로 바뀌지 않습니다.
 
 ## 1. 버전 비교 — 어떤 걸 설치하면 될까요?
 
@@ -197,7 +190,7 @@ docker compose up -d --force-recreate --no-deps marinara
 | **주인공 유닛 외형 동기화 (3단계)** | [게임 런 → 주인공 유닛](docs/persona-appearance.md#3단계--기존-주인공-유닛에도-외형-반영하기) |
 | **인물별 프롬프트 분리 기능만 사용** | [단독판 설치 안내](standalone/README.md) |
 
-각 버전 소스: [v1](versions/v1/gacha-cg-runtime.cjs) · [v1.1](versions/v1.1/gacha-cg-runtime.cjs) · [v1.2](versions/v1.2/gacha-cg-runtime.cjs) · [v1.2.1](versions/v1.2.1/gacha-cg-runtime.cjs)
+각 버전 소스: [v1](versions/v1/gacha-cg-runtime.cjs) · [v1.1](versions/v1.1/gacha-cg-runtime.cjs) · [v1.2](versions/v1.2/gacha-cg-runtime.cjs)
 
 **유의사항:** 기존 CG 빈도 제한 및 사용자 화풍 지침은 유지합니다. 이미지 생성 비용은 기존 이미지 모델 설정에 따라 발생할 수 있습니다. 서버 비밀번호·관리자 키·API 키와 사용자 게임 데이터를 공개 저장소에 올리지 마세요.
 
