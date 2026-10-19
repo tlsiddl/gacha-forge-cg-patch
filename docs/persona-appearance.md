@@ -50,6 +50,23 @@ docker exec marinara-engine-marinara-1 python3 -c 'import json,pathlib; p=pathli
 
 **언제 필요한가요?** 1단계에서 페르소나의 별도 외형란을 저장했지만, **예전에 만든 게임 런의 외형란이 여전히 비어 있는 경우**입니다.
 
+### 먼저 런 외형이 비어 있는지 확인하기 (읽기 전용)
+
+아래 명령은 **현재 게임 런의 주인공 외형이 저장되어 있는지** 확인합니다. 데이터를 수정하지 않습니다.
+
+위에서 찾은 **Run ID**를 첫 줄에 입력한 다음 **두 줄을 함께 실행**해 주세요.
+
+```bash
+RUN_ID='여기에-런-ID'
+docker exec -e RUN_ID="$RUN_ID" marinara-engine-marinara-1 python3 -c 'import json,os,pathlib; p=pathlib.Path("/app/data/storage/tables/capability_documents/index.json"); d=json.loads(p.read_text())[0]["data"]; d=json.loads(d) if isinstance(d,str) else d; rid=os.environ["RUN_ID"]; matches=[r for r in d.get("runs",[]) if r.get("runId")==rid]; assert len(matches)==1, "해당 Run ID를 가진 게임 기록을 하나만 찾을 수 있어야 합니다"; a=(matches[0].get("protagonist") or {}).get("appearance") or ""; print("주인공:",(matches[0].get("protagonist") or {}).get("name","이름 없음")); print("런 외형 글자 수:",len(a)); print("런 외형 상태:","비어 있음 - 2단계 필요" if not a.strip() else "저장되어 있음 - 2단계 건너뛰기")'
+```
+
+결과에 따라 진행해 주세요.
+
+- **`런 외형 상태: 비어 있음 - 2단계 필요`** → 아래 2단계 동기화 명령을 실행하세요. 먼저 1단계에서 페르소나 외형란을 저장해야 합니다.
+- **`런 외형 상태: 저장되어 있음 - 2단계 건너뛰기`** → 런 외형을 덮어쓰지 말고 **3단계의 주인공 유닛 확인·동기화**로 넘어가세요.
+- Run ID를 찾지 못했다는 오류가 나오면 위의 **Run ID 조회 명령**부터 다시 확인해 주세요.
+
 **무엇을 바꾸나요?** 원본 페르소나의 `appearance`를 **기존 런의 `protagonist.appearance`에 복사**합니다. 다른 게임 기록을 건드리지 않도록 Run ID와 페르소나 ID·이름을 검사합니다. 기존 외형이 있다면 덮어쓰지 않고 중단합니다. 변경 전에는 `index.json`을 자동 백업합니다.
 
 > **주의:** 스토리·CG 사전 생성이 진행 중이라면 실행하지 마세요. 저장 파일을 직접 수정하므로 서버 캐시와 충돌할 수 있습니다. 아래 범용 스크립트는 한 환경에서 사용한 절차를 일반화한 것이며, 모든 설치 환경에서 검증된 것은 아닙니다.
