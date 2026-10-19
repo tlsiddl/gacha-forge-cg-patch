@@ -1,83 +1,117 @@
-# Gacha Forge 캐릭터 우대형 CG 조건 패치 v1
+# Gacha Forge CG 조건 패치 — v1 / v1.1
 
-가챠 포지 **1.8.12**에서 CG를 선정할 때 **주요 인물 첫 등장, 첫 대면, 인물 간 상호작용과 시각적으로 인상적인 캐릭터 장면**을 더 적극적으로 고려하도록 하는 비공식 테스트 패치입니다.
+가챠 포지 **1.8.12**에서 CG 선정 조건을 캐릭터 중심으로 개선하는 비공식 런타임 패치입니다. **원하는 버전을 선택해 설치하신 뒤, 필요하면 v1 ↔ v1.1로 변경할 수 있습니다.**
 
-**한국어 배경·스탠딩 패치와 별개로 설치하고 제거하실 수 있습니다.** 기존 CG 생성 빈도 상한, CG 데이터 구조 및 사용자가 설정한 이미지 화풍 지침은 수정하지 않습니다. CG가 매 장면 생성되거나 일정 개수 이상 생성되는 것을 보장하지 않습니다.
+> 이 문서의 명령어는 Docker Compose로 운영하는 Marinara Engine 2.5.0, Gacha Forge 1.8.12, Node.js 22 이상 및 설치 경로 `/root/Marinara-Engine` 기준입니다. 다른 환경에서는 적용 전 검토해 주세요.
 
-> 실제 서버에서 CG가 성공적으로 생성되는지 추가 검증이 필요한 테스트 버전입니다. 기존 생성 스토리에는 소급 적용되지 않습니다.
+## 버전 선택
 
-## 적용 대상
+| 기능 | v1 — 캐릭터 우대형 | v1.1 — 페르소나 동반형 |
+| --- | --- | --- |
+| 주요 캐릭터 첫 등장·첫 대면 CG 우대 | 지원 | 지원 |
+| 인상적인 상호작용·다인 장면 우대 | 지원 | 지원 |
+| **플레이어 페르소나(내 캐릭터)** 함께 등장 우대 | 기존 처리 유지 | **강화** |
+| 실제 포옹·손잡기·부축 등 동작 정확성 강조 | 기존 처리 유지 | **강화** |
+| 없는 행동·감정·접촉 임의 생성 금지 | 유지 | 유지 |
+| 기존 CG 빈도 상한·사용자 이미지 지침 | 변경 없음 | 변경 없음 |
 
-- Marinara Engine 2.5.0 / Gacha Forge **1.8.12**
-- Node.js 22 이상
-- Docker Compose 서비스 이름: `marinara`
-- 기본 엔진 설치 경로: `/root/Marinara-Engine`
+**v1.1을 추천**하지만, 기존 v1도 계속 선택하실 수 있습니다. v1.1은 페르소나가 **실제 장면에 참여하거나 화면에 존재할 때** CG에서 누락되지 않도록 모델에 더 명확히 지시합니다. 페르소나를 모든 그림에 강제로 등장시키지는 않습니다.
 
-해당 버전의 서버 런타임 스냅샷에만 적용합니다. 원본 CG 선정 문구가 예상한 형태와 일치하지 않으면 변경을 건너뛰도록 구성했습니다.
+이 패치는 CG를 *선정하는 스토리 생성 프롬프트*를 변경합니다. 이미지 생성기나 캐릭터 시트 연결 코드를 수정하는 것은 아닙니다. 따라서 CG 포함을 보장하지 않으며, 이미 생성된 스토리·CG에는 소급 적용되지 않습니다.
 
-## 1. SSH에서 GitHub 패치 파일 다운로드
+## 1. 공통 준비 — GitHub에서 직접 다운로드
 
-SSH로 서버에 접속한 후 아래 명령어를 순서대로 복사해 실행해 주세요. **PC에서 ZIP을 다운로드하거나 SCP로 업로드하지 않아도 됩니다.**
+SSH로 마리나라 서버에 접속한 뒤 아래 명령어를 **통째로** 실행해 주세요. 기존 한국어 패치나 가속 패치의 설치 여부와 관계없이 사용할 수 있습니다.
 
 ```bash
 cd /root
 
-curl -fL \
-  https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-runtime.cjs \
-  -o gacha-cg-runtime.cjs
-
-curl -fL \
-  https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-patchctl.py \
-  -o gacha-cg-patchctl.py
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1/gacha-cg-runtime.cjs -o gacha-cg-v1.cjs
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.1/gacha-cg-runtime.cjs -o gacha-cg-v1.1.cjs
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-patchctl.py -o gacha-cg-patchctl.py
+curl -fL https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/gacha-cg-versionctl.py -o gacha-cg-versionctl.py
 ```
 
-## 2. 설치 전 상태 확인
+이미 v1을 사용하고 계신 분도 위 파일들을 새로 다운로드하시면 됩니다. 기존 스토리와 CG 저장 데이터는 건드리지 않습니다.
+
+## 2. CG 패치를 처음 설치하시는 분
+
+먼저 설치 상태를 확인해 주세요.
 
 ```bash
-python3 /root/gacha-cg-patchctl.py status
-python3 /root/gacha-cg-patchctl.py check
+python3 /root/gacha-cg-versionctl.py status
 ```
 
-최초 설치 상태라면 다음과 유사하게 출력됩니다.
+`CG configured: False`라면 아래 중 **하나만 선택**해 실행해 주세요.
 
-```text
-CG patch configured: False backup exists: False
-CHECK OK: independent CG patch can be configured; Korean patch settings preserved
-```
-
-`CHECK OK`가 출력될 때만 설치를 진행해 주세요. 설정 형식이 예상과 다르면 자동 설치를 중단합니다.
-
-## 3. CG 패치 설치
+**v1 처음 설치**
 
 ```bash
-python3 /root/gacha-cg-patchctl.py install
+python3 /root/gacha-cg-versionctl.py install v1
 ```
 
-정상적으로 설치되면 `CG PATCH INSTALLED` 메시지가 출력됩니다. 기존 한국어 패치 및 다른 `NODE_OPTIONS` 설정은 최대한 그대로 보존합니다. 가속 패치는 필수 조건이 아닙니다.
+**v1.1 처음 설치 (추천)**
 
-## 4. 마리나라 컨테이너 재시작
+```bash
+python3 /root/gacha-cg-versionctl.py install v1.1
+```
 
-3단계가 성공한 경우에만 실행해 주세요.
+설치 성공 메시지를 확인하셨다면 마리나라를 재시작해 주세요.
 
 ```bash
 cd /root/Marinara-Engine
 docker compose up -d --no-deps marinara
 ```
 
-## 5. 패치 적용 확인
+## 3. 기존 v1 사용자 — v1.1로 업그레이드
+
+**기존 CG 패치 v1을 설치한 상태라면 제거하거나 재설치할 필요가 없습니다.**
+
+공통 준비의 파일을 다운로드한 뒤 다음 명령어를 실행해 주세요.
 
 ```bash
-python3 /root/gacha-cg-patchctl.py status
+python3 /root/gacha-cg-versionctl.py status
+python3 /root/gacha-cg-versionctl.py switch v1.1
 
-docker logs --since 10m marinara-engine-marinara-1 2>&1 \
-  | grep 'gacha-cg' | tail -20
+cd /root/Marinara-Engine
+docker compose up -d --no-deps marinara
 ```
 
-`CG patch configured: True`와 `hook registered`는 설정과 로더 등록 여부를 의미합니다. 실제 CG 지침 교체 성공은 **`CG character-focused selection policy applied in memory`** 메시지로 확인해 주세요.
+설치 스크립트는 이미 적용된 Compose 마운트 및 `NODE_OPTIONS`를 유지하고 **CG 런타임 파일만 교체**합니다. 한국어 패치 설정과 CG 패치의 기존 복구용 백업은 변경하지 않습니다.
 
-새로운 스토리 장면을 생성해 보시고, 캐릭터가 포함된 인상적인 장면에서 CG가 선정되는지 확인해 주세요. CG가 생성되지 않더라도 반드시 오류라는 의미는 아니며, AI 판단과 기존 빈도 설정에 따라 달라집니다.
+현재 런타임이 공식 배포한 v1/v1.1 파일과 다른 것으로 판별되면 덮어쓰기를 중단합니다.
 
-## 6. CG 패치만 제거하고 이전 설정으로 복원
+## 4. v1.1에서 v1으로 되돌리기
+
+v1.1을 사용해 보신 뒤 기존 CG 선정 방식을 선호하신다면 아래 명령어를 실행해 주세요.
+
+```bash
+python3 /root/gacha-cg-versionctl.py switch v1
+
+cd /root/Marinara-Engine
+docker compose up -d --no-deps marinara
+```
+
+이는 CG 패치를 제거하는 것이 아니라 **버전만 변경**하는 작업입니다.
+
+## 5. 설치·적용 상태 확인
+
+```bash
+python3 /root/gacha-cg-versionctl.py status
+
+docker logs --since 10m marinara-engine-marinara-1 2>&1 | grep 'gacha-cg' | tail -20
+```
+
+`CG configured: True`는 설치 설정을 뜻합니다. `hook registered`는 로더 등록만 의미하며 실제 프롬프트 교체 성공은 다음 로그로 판단해 주세요.
+
+- v1: `CG character-focused selection policy applied in memory`
+- v1.1: `CG character-focused selection policy v1.1 applied in memory`
+
+실제 CG 생성 여부는 새로운 스토리 장면과 이미지 저장 결과를 확인하셔야 합니다. 기존 생성 장면은 자동 수정되지 않습니다.
+
+## 6. CG 패치를 완전히 제거하기
+
+설치 전의 Compose 설정으로 되돌리려면 기존 복구 도구를 사용해 주세요.
 
 ```bash
 python3 /root/gacha-cg-patchctl.py restore
@@ -86,35 +120,21 @@ cd /root/Marinara-Engine
 docker compose up -d --no-deps marinara
 ```
 
-CG 패치 설치 직전의 Compose 설정을 복원합니다. 설치 전에 한국어 패치가 적용되어 있었다면 해당 설정도 그대로 복원됩니다. 설치 후 Compose 파일을 수동으로 수정하셨다면 안전을 위해 자동 복원이 중단될 수 있습니다.
+복원은 CG 패치 설치 직전 Compose 상태를 되살립니다. v1을 설치한 후 v1.1로 전환했더라도 복원 대상은 **최초 CG 패치 설치 직전 설정**입니다. 설치 이후 Compose 설정을 수동 변경하셨다면 자동 복구가 안전하게 중단될 수 있습니다.
 
-## 어떤 기준이 달라지나요?
+## 지원 파일
 
-**CG 후보로 더 적극적으로 고려하는 장면**
+- `versions/v1/gacha-cg-runtime.cjs`: v1 런타임 (보존)
+- `versions/v1.1/gacha-cg-runtime.cjs`: 페르소나 동반 CG 선정 기능을 강화한 v1.1
+- `gacha-cg-versionctl.py`: 버전별 신규 설치 및 버전 전환 도구
+- `gacha-cg-patchctl.py`: 기존 설치·상태·복구 도구
+- `gacha-cg-runtime.cjs`: 이전 v1 설치 방식과 호환되는 레거시 파일
 
-- 중요한 캐릭터의 첫 등장 및 첫 대면
-- 인물 사이의 인상적인 감정 표현이나 긴장, 대치
-- 두 명 이상 캐릭터가 한 화면에서 의미 있는 행동을 보여주는 장면
-- 캐릭터와 공간이 어우러지는 시각적으로 매력적인 장면
-- 중요한 발견, 반전, 관계 변화, 사건의 전환점
+## 유의사항
 
-**여전히 CG를 아끼는 장면**
-
-- 단순한 이동 또는 정보 설명
-- 의미 없는 짧은 대화나 반복 구도
-- 특별한 시각적 가치가 없는 우연한 등장
-
-이미지 생성을 위해 실제 이야기에 없는 접촉, 감정, 로맨스, 행동을 추가하도록 지시하지 않습니다.
-
-## 변경하지 않는 부분
-
-- 기존 CG 빈도 설정 및 허용 횟수 계산
-- `cg.from`, `cg.to`, `cg.title`, `cg.prompt`, `cg.characters`, `cg.reason` 구조
-- 이미지 모델 연결, 캐릭터 시트, 갤러리 저장
-- 사용자 지정 화풍·세계관 지침
-- 한국어 배경·스탠딩 패치
-- 기존 저장된 스토리
-
-## 주의사항
-
-이 패치는 가챠 포지 공식 제작진과 무관한 비공식 패치입니다. 업데이트 후에는 호환성을 다시 확인해 주세요. 공개 저장소에는 서버 주소, 비밀번호, API 키, `.env` 파일 및 개인 게임 데이터를 올리지 마세요.
+- **v1과 v1.1을 동시에 실행하지 마세요.** 같은 CG 패치에서 사용 버전 하나만 선택합니다.
+- CG 빈도 설정, 사용자 지정 화풍 지침, 이미지 생성 모델 및 한국어 배경·스탠딩 패치는 변경하지 않습니다.
+- 파일을 다운로드하는 명령은 README의 버전별 경로를 사용해 주세요. `main/gacha-cg-runtime.cjs`는 호환성을 위해 **v1**으로 유지됩니다.
+- CG 이미지 생성에는 기존 모델 설정에 따른 비용이 발생할 수 있습니다.
+- 서버 비밀번호, API 키, 개인 설정 및 게임 저장 데이터를 공개 저장소에 올리지 마세요.
+- 본 프로젝트는 [Marinara Agents](https://github.com/Pasta-Devs/Marinara-Agents)의 비공식 패치입니다.
