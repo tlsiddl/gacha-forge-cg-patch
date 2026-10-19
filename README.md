@@ -174,3 +174,76 @@ docker compose up -d --force-recreate --no-deps marinara
 - CG 이미지 생성에는 기존 모델 설정에 따른 비용이 발생할 수 있습니다.
 - 서버 비밀번호, API 키, 개인 설정 및 게임 저장 데이터를 공개 저장소에 올리지 마세요.
 - 본 프로젝트는 [Marinara Agents](https://github.com/Pasta-Devs/Marinara-Agents)의 비공식 패치입니다.
+
+
+## 주인공 유닛 외형이 비어 있는 경우 — 저장 데이터 동기화
+
+가챠 포지의 **런에 저장된 주인공 외형**과 **주인공 캐릭터 유닛 외형**은 별개일 수 있습니다. 기존 런의 `protagonist.appearance`에는 텍스트가 있어도 유닛 `appearance`가 빈 문자열인 경우가 확인되었습니다.
+
+**검증 사례:** Gacha Forge 1.8.12의 한 기존 런에서 런 외형 400자, 유닛 외형 0자였으며, 외형 한 필드만 동기화한 뒤 읽기 전용 검사에서 **400자 / 400자 / 동일함(True) / 주인공(True)**를 확인했습니다. 이것은 **저장 파일 검증**이며 새 CG 반영이나 서버 캐시 갱신을 보장하는 결과는 아닙니다.
+
+**주의:** 아래 절차는 Docker 안의 Gacha Forge 저장 JSON 문서를 직접 수정하는 고급 사용자용 방법입니다. 생성 중인 스토리·CG 작업이 없을 때만 사용하시고, 작업 전 서버 백업을 권장합니다. 다른 저장소 구조/버전에서는 사용하지 마세요. 인용부호와 `PY` 종료 행을 포함한 전체 명령어를 붙여 넣어야 합니다. 종료 행 `PY`는 맨 앞부터 단독으로 입력해야 합니다.
+
+1. 자신의 런 ID를 확인하고 `RUN_ID`를 변경합니다. 주인공 이름을 특정 이름으로 고정하지 않습니다.
+2. 동기화 전에 런과 유닛의 ID, 주인공 여부를 검증하고 대상 문서의 원본 백업을 남깁니다.
+3. 현재 빈 `appearance`만 채웁니다. 이미 값이 있는 유닛은 자동으로 덮어쓰지 않습니다.
+4. 파일 수정 후 다시 내용을 읽어 두 외형이 완전히 동일한지 확인합니다.
+
+```bash
+# 반드시 본인의 런 ID로 바꾸세요.
+RUN_ID='여기에-런-ID'
+docker exec -i -e RUN_ID="$RUN_ID" marinara-engine-marinara-1 python3 - <<'PY'
+import json, os, shutil
+from pathlib import Path
+from datetime import datetime
+
+root = Path('/app/data/storage/tables/capability_documents')
+run_id = os.environ['RUN_ID']
+if not run_id or run_id == '여기에-런-ID':
+    raise SystemExit('중단: RUN_ID를 실제 값으로 변경해 주세요.')
+
+index = json.loads((root / 'index.json').read_text())[0]['data']
+if isinstance(index, str): index = json.loads(index)
+run = next((x for x in index['runs'] if x.get('runId') == run_id), None)
+if not run: raise SystemExit('중단: 런을 찾지 못했습니다.')
+source = run.get('protagonist') or {}
+appearance = source.get('appearance') or ''
+name = source.get('name') or ''
+if not name or not appearance.strip():
+    raise SystemExit('중단: 런의 주인공 이름 또는 외형이 없습니다.')
+
+id_expected = run_id + ':unit:protagonist'
+target = root / (id_expected.replace(':', '%3A') + '.json')
+if not target.exists():
+    raise SystemExit('중단: 주인공 유닛 파일을 찾지 못했습니다. 수정하지 않았습니다.')
+original = target.read_text()
+records = json.loads(original)
+if not isinstance(records, list) or len(records) != 1 or records[0].get('id') != id_expected:
+    raise SystemExit('중단: 유닛 문서의 형식 또는 ID가 다릅니다.')
+data = records[0]['data']
+if isinstance(data, str): data = json.loads(data)
+if data.get('name') != name or data.get('isProtagonist') is not True:
+    raise SystemExit('중단: 유닛의 주인공 신원이 일치하지 않습니다.')
+if (data.get('appearance') or '').strip():
+    raise SystemExit('중단: 유닛 외형이 이미 있습니다. 덮어쓰지 않습니다.')
+
+backup = target.with_name(target.name + '.appearance-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+shutil.copy2(target, backup)
+data['appearance'] = appearance
+records[0]['data'] = json.dumps(data, ensure_ascii=False)
+if target.read_text() != original:
+    raise SystemExit('중단: 작업 도중 문서가 변경되었습니다.')
+with target.open('w') as file:
+    json.dump(records, file, ensure_ascii=False)
+print('외형 동기화 완료:', name, len(appearance), '자')
+print('백업:', backup.name)
+PY
+```
+
+**저장 파일 검증:** 같은 `RUN_ID`를 유지한 채 아래 명령을 실행합니다.
+
+```bash
+docker exec -e RUN_ID="$RUN_ID" marinara-engine-marinara-1 python3 -c 'import json,os,pathlib; p=pathlib.Path("/app/data/storage/tables/capability_documents"); rid=os.environ["RUN_ID"]; q=json.loads((p/"index.json").read_text())[0]["data"]; q=json.loads(q) if isinstance(q,str) else q; run=next(r for r in q["runs"] if r.get("runId")==rid); x=json.loads((p/(rid.replace(":","%3A")+"%3Aunit%3Aprotagonist.json")).read_text())[0]["data"]; x=json.loads(x) if isinstance(x,str) else x; a=run["protagonist"].get("appearance",""); b=x.get("appearance",""); print("런 외형:",len(a),"자"); print("유닛 외형:",len(b),"자"); print("외형 일치:",a==b); print("주인공 여부:",x.get("isProtagonist"))'
+```
+
+두 외형의 길이가 같고 `외형 일치: True`이면 **저장 파일**에는 반영된 것입니다. 실행 중인 서버가 이전 문서를 캐시할 수 있으므로 새 CG 반영은 별도로 테스트해야 합니다. 이 방법은 한 런에서 검증된 절차이며 모든 Gacha Forge 버전에 대한 자동 복구 도구가 아닙니다.
