@@ -179,3 +179,15 @@ docker compose up -d --force-recreate --no-deps marinara
 **유의사항:** 기존 CG 빈도 제한 및 사용자 화풍 지침은 유지합니다. 이미지 생성 비용은 기존 이미지 모델 설정에 따라 발생할 수 있습니다. 서버 비밀번호·관리자 키·API 키와 사용자 게임 데이터를 공개 저장소에 올리지 마세요.
 
 본 프로젝트는 [Marinara Agents](https://github.com/Pasta-Devs/Marinara-Agents)의 비공식 패치입니다.
+
+
+## Gacha Forge 1.8.13 (Marinara Engine 2.5.1) — CG v1.2
+
+공식 1.8.13의 새 배경 코드에 손대지 않는 CG v1.2 서버 런타임은 [`versions/v1.2-gf1813/gacha-cg-runtime.cjs`](versions/v1.2-gf1813/gacha-cg-runtime.cjs)에 별도로 추가했습니다. 기존 1.8.12용 v1/v1.1/v1.2와 설치 스크립트는 변경하지 않았습니다. 새 파일을 읽기 전용으로 마운트하고 해당 파일을 `NODE_OPTIONS --require`에 연결해야 적용됩니다. 기존 v1.2 로더와 중복 등록하지 마세요. 1.8.13의 원본 서버와 커스터마이저 14개 수정의 두 가지 적용 순서에서 변환/문법 테스트를 통과했으나 실제 이미지 생성은 업데이트 후 확인해야 합니다.
+
+```bash
+cd /root/Marinara-Engine
+curl -fL --retry 3 https://raw.githubusercontent.com/tlsiddl/gacha-forge-cg-patch/main/versions/v1.2-gf1813/gacha-cg-runtime.cjs -o gacha-cg-1813-runtime.cjs
+```
+
+다운로드만으로 활성화되지는 않습니다. Compose의 기존 패치 설정을 보존하고 로더 경로를 새 파일로 교체한 뒤 정상 로그 `[gacha-cg] CG character-focused selection and pipe-separated CG prompt v1.2 applied in memory`를 확인하세요.
